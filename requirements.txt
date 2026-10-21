@@ -1,0 +1,5 @@
+# 核心链路零第三方依赖：python main.py run 直接可跑。
+#
+# 下面这些只在「接入真实模型/绘图」时才需要，核心链路不 import 它们。
+# torch>=2.2
+# matplotlib>=3.8

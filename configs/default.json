@@ -1,0 +1,71 @@
+{
+  "_comment": [
+    "全部阈值与口径都在这里，代码里不硬编码任何门槛。",
+    "代码里的 DEFAULTS 是同一份内容的兜底（这个文件不存在时用它），两边必须一致 ——",
+    "`main.py config` 会打印当前生效的口径来源。",
+    "expectations 是**设计期望**，允许被实测推翻 —— 报告第 9 节会逐条对照，",
+    "被推翻的那些是附录 B 里最值得看的部分。"
+  ],
+  "seed": 20260930,
+  "prompts": {
+    "index": "data/prompts.jsonl",
+    "n_prompts": 96
+  },
+  "candidates": {
+    "n_candidates": 3,
+    "_families_note": [
+      "kind_bonus 让每个族各有擅长与短板。没有它的话，能力最强的族在所有题型上都赢，",
+      "「它产出的候选更差」的样本数为 0，自我偏好这条轴根本测不出来。",
+      "三个「裁判归属族」（plain/careful/terse）的 verbosity 刻意接近（1.00/1.10/0.85），",
+      "verbose（1.95）不给任何裁判 —— 它只负责提供长度方差。"
+    ]
+  },
+  "judging": {
+    "tie_margin": 0.05,
+    "confidence_scale": 0.6,
+    "weight_by_bias": true
+  },
+  "probes": {
+    "n_swap": 96,
+    "n_length": 96,
+    "n_self": 96,
+    "match_tolerance": 0.1,
+    "trap_gap_lo": 0.08,
+    "trap_gap_hi": 0.3,
+    "self_length_band": 8
+  },
+  "filter": {
+    "min_agreement": 0.35,
+    "min_confidence": 0.2,
+    "bias_threshold": 0.1,
+    "require_rule_agreement": true,
+    "require_untainted_support": true
+  },
+  "acceptance": {
+    "truth_tie_eps": 0.02,
+    "min_records": 200,
+    "min_noise_removed": 40,
+    "require_agreement_in_unit": true,
+    "require_kappa_le_agreement": true,
+    "require_unbiased_judges_clean": true,
+    "unbiased_bias_tolerance": 0.12,
+    "require_noise_rate_drops": true,
+    "require_all_axes_sampled": true,
+    "min_rank_correlation": 0.6,
+    "length_quality_corr_bound": 0.3,
+    "min_filter_lift": 1.5
+  },
+  "expectations": {
+    "rule_judge_agrees_with_truth": true,
+    "weighted_verdict_beats_majority": true,
+    "confidence_correlates_with_true_margin": true,
+    "filter_precision_above": 0.6,
+    "retention_spread_under": 0.1,
+    "tie_verdicts_track_true_ties": true,
+    "weighted_verdict_beats_majority_in_every_kind": true
+  },
+  "report": {
+    "headline_records": 6,
+    "max_matrix_rows": 24
+  }
+}
