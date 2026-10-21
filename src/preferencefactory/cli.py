@@ -463,7 +463,28 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _harden_stdio() -> None:
+    """让 stdout / stderr 不会因为一个字符就崩掉。
+
+    Windows 下输出被重定向（管道、写文件）时编码是 GBK，报告里的 ``κ̄`` 带组合
+    字符 U+0304，直接 ``UnicodeEncodeError``。终端里 Python 走宽字符 API 不受
+    影响，所以只在非 tty 时切到 UTF-8，tty 只放宽错误处理。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            if stream.isatty():
+                reconfigure(errors="replace")
+            else:
+                reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _harden_stdio()
     args = build_parser().parse_args(argv)
     try:
         with _quiet_prose() if getattr(args, "json", False) else _null():
