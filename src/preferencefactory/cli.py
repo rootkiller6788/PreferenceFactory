@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
@@ -52,11 +53,22 @@ class _quiet_prose:
         return False
 
 
+def _display_width(text: str) -> int:
+    """终端显示宽度：全角字符占 2 列，组合字符不额外占列。"""
+    width = 0
+    for ch in text:
+        if unicodedata.combining(ch):
+            continue
+        width += 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+    return width
+
+
 def _row(cells: Sequence[Any], widths: Sequence[int]) -> str:
     out = []
     for c, w in zip(cells, widths):
         s = str(c)
-        out.append(s if len(s) >= w else s + " " * (w - len(s)))
+        pad = w - _display_width(s)
+        out.append(s + " " * pad if pad > 0 else s)
     return "  ".join(out).rstrip()
 
 
