@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -491,6 +492,15 @@ def main(argv: list[str] | None = None) -> int:
             return int(args.func(args))
     except KeyboardInterrupt:  # pragma: no cover
         return 130
+    except BrokenPipeError:  # pragma: no cover
+        # `main.py records | head` 这类用法：下游先关了管道，不是错误。
+        # 把 stdout 指向 devnull，避免解释器退出时再 flush 一次又报错。
+        try:
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+        except OSError:
+            pass
+        return 0
 
 
 class _null:
