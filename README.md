@@ -155,7 +155,7 @@ L4-preferencefactory/
 │   ├── report.py                   markdown 报告
 │   ├── visualize.py                自包含 HTML（零外部资源）
 │   └── cli.py                      3 写 + 15 只读子命令
-├── tests/                          空 —— 见 A.5
+├── tests/                          CLI 契约 / JSON / 编码回归（见 A.5）
 ├── main.py                         入口（零安装：把 src/ 塞进 sys.path）
 └── out/                            产物（见 A.4）
 ```
@@ -253,8 +253,7 @@ stdout。所以 `python main.py bias --json | jq` 是能用的。全部 15 个�
 
 ## A.5 关于 `tests/`
 
-本工作区的约定是**不写 pytest，把验证放进流水线自身的运行时核对**。所以这里的
-`tests/` 是空的，质量闸门是 `acceptance.py`：
+**质量闸门**仍然是流水线自身的运行时核对 `acceptance.py`：
 
 - **`main.py acceptance`**（17 项）核对这一批结果：κ ≤ 一致率、无偏裁判不被指控、
   三轴校准的秩相关、渲染↔判据往返、长度与真值弱相关、噪声率下降、提升倍数、
@@ -262,6 +261,18 @@ stdout。所以 `python main.py bias --json | jq` 是能用的。全部 15 个�
 - **`main.py adversarial`**（12 项）用刻意构造的极端裁判敲检测器：永远选第一个 /
   永远选更长的 / 永远选自家族的三个裁判必须被抓到，**完全干净的裁判一条都不许被抓到**。
   它不依赖产物，所以产物过期时仍然能跑。
+
+`tests/` 只放**入口契约**层面的快速用例（`python -m pytest`）：
+
+- `test_cli_contract.py`：`--help` 与每个子命令的 `--help` 都必须 rc=0；
+- `test_json_contract.py`：15 个只读命令的 `--json` 输出必须能被 `json.loads`
+  （坑 119 / 120 的回归闸门）；
+- `test_cli_encoding.py`：GBK 重定向下的输出编码（组合字符不再崩）；
+- `test_module_entry.py`：`python -m preferencefactory` 与 `main.py` 同一契约；
+- `test_config_defaults.py`：`configs/default.json` 与代码 `DEFAULTS` 一致；
+- `test_export_no_truth.py`：导出形态不含隐藏真值。
+
+两者分工：`tests/` 管「命令还能不能用」，`acceptance` 管「这批结果还可不可信」。
 
 ---
 
