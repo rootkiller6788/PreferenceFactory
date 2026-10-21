@@ -9,6 +9,9 @@ description = "PreferenceFactory —— 偏好证据的产生、验证、去噪�
 requires-python = ">=3.12"
 dependencies = []
 
+[project.scripts]
+preferencefactory = "preferencefactory.cli:main"
+
 [project.optional-dependencies]
 # 重型接入点一律写成抛 NotImplementedError 的扩展点，不放进核心链路。
 torch = ["torch>=2.2"]
