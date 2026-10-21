@@ -1,0 +1,8 @@
+# 仓库内文本统一 LF：产物写入用 newline="\n"，digest 也是内容寻址的。
+# 不统一换行会让同一份代码在不同机器上 checkout 出不同的字节。
+* text=auto eol=lf
+
+# 二进制/生成物（out/ 已在 .gitignore 里，这里只防御性标注）
+*.png binary
+*.jpg binary
+*.pdf binary
