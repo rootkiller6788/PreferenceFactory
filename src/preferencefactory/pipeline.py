@@ -452,10 +452,19 @@ def _build_lineage(
 # 落盘 / 读回
 # --------------------------------------------------------------------------
 
-def _write_json(path: Path, obj: Any) -> None:
+def _write_json(path: Path, obj: Any, *, indent: int | None = 2) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+        json.dumps(
+            obj,
+            ensure_ascii=False,
+            indent=indent,
+            sort_keys=True,
+            separators=(",", ":") if indent is None else None,
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
 
 
@@ -464,9 +473,9 @@ def write_outputs(result: PipelineResult, out_dir: Path | str) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
-    def w(name: str, obj: Any) -> None:
+    def w(name: str, obj: Any, *, indent: int | None = 2) -> None:
         p = out / name
-        _write_json(p, obj)
+        _write_json(p, obj, indent=indent)
         written.append(p)
 
     w(
@@ -529,7 +538,9 @@ def write_outputs(result: PipelineResult, out_dir: Path | str) -> list[Path]:
         "funnel.json",
         {"funnel": result.funnel.to_dict(), "noise": result.noise.to_dict()},
     )
-    w("lineage.json", result.lineage.to_dict())
+    # 血缘图是给程序读的（DOT 另有一份给人看），不需要缩进；紧凑格式让这份
+    # 678 节点 / 2,693 条边的产物从 ~413KB 降到 ~300KB，写和读都更快。
+    w("lineage.json", result.lineage.to_dict(), indent=None)
     dot = out / "lineage.dot"
     dot.parent.mkdir(parents=True, exist_ok=True)
     dot.write_text(result.lineage.to_dot(), encoding="utf-8", newline="\n")
