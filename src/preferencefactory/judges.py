@@ -57,6 +57,7 @@ def normalize_judges(raw: Iterable[Mapping[str, Any]]) -> list[JudgeSpec]:
     return out
 
 
+@lru_cache(maxsize=8192)
 def rule_quality(prompt: Prompt, c: Candidate) -> tuple[float, tuple[str, ...]]:
     """`rule` 裁判眼里的客观质量：**重新解析文本**算出来的，不是读 `c.criteria` 字段。
 
@@ -66,6 +67,9 @@ def rule_quality(prompt: Prompt, c: Candidate) -> tuple[float, tuple[str, ...]]:
 
     注意 `rule` 看到的是 `criteria`（可观测的那部分），**不是 `quality`（真值）** ——
     真值里有 20% 是任何机械判据都看不到的。无偏 ≠ 全知。
+
+    结果是纯函数且只依赖 `(prompt, candidate)`，所以可以缓存：同一候选会在主记录流、
+    换序探针、陷阱集/对照集里被 `rule` 反复判定，而每次都要重新解析文本。
     """
     res = evaluate(prompt, c.text)
     passed = tuple(k for k in ("exact", "clean", "punct", "tidy") if res.get(k))
