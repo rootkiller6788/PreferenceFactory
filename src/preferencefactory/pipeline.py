@@ -396,12 +396,16 @@ def _attach_rankings(
         loser = r.b if r.verdict == "a" else r.a
         d[winner.id] += 1
         d[loser.id] -= 1
+    # 同一 prompt 下的每条记录共享同一个 Copeland 排名，排序一次即可；
+    # 原来每条记录都把同一份 standings 重排一遍（3 候选取 3 条记录 → 3 次）。
+    rankings = {
+        pid: tuple(k for k, _ in sorted(d.items(), key=lambda kv: (-kv[1], kv[0])))
+        for pid, d in wins.items()
+    }
     out: list[PreferenceRecord] = []
     for r in records:
-        d = wins.get(r.prompt_id, {})
-        ordered = sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))
         out.append(
-            PreferenceRecord(**{**_asdict_shallow(r), "ranking": tuple(k for k, _ in ordered)})
+            PreferenceRecord(**{**_asdict_shallow(r), "ranking": rankings.get(r.prompt_id, ())})
         )
     return out
 
