@@ -96,7 +96,8 @@ class PipelineResult:
     funnel: Funnel
     noise: NoiseReport
     manifest: Any
-    lineage: Lineage
+    #: `load_result(with_lineage=False)` 时只读命令不需要它，值为 None。
+    lineage: Lineage | None
     expectations: Mapping[str, Any] = field(default_factory=dict)
     counts: Mapping[str, Any] = field(default_factory=dict)
 
@@ -618,11 +619,14 @@ def _histogram(xs: Sequence[float], bins: int = 10) -> list[dict[str, Any]]:
     ]
 
 
-def load_result(out_dir: Path | str) -> PipelineResult | None:
+def load_result(out_dir: Path | str, *, with_lineage: bool = True) -> PipelineResult | None:
     """从产物重建 `PipelineResult`。
 
     **缺任何一个文件就返回 `None`** —— 半个产物比没有产物危险得多：读命令会
     以为自己读到了完整结果，然后在缺失的那部分上静默给出 0。
+
+    `with_lineage=False` 时不解析 `lineage.json`：这个文件有几千条边，只有
+    `lineage` 命令需要它，其他 14 个只读命令没必要为它付解析与建图的成本。
     """
     out = Path(out_dir)
     for name in OUT_FILES:
@@ -675,7 +679,11 @@ def load_result(out_dir: Path | str) -> PipelineResult | None:
     )
     summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
     judges = tuple(JudgeSpec.from_dict(j) for j in summary["judges"])
-    lineage = Lineage.from_dict(json.loads((out / "lineage.json").read_text(encoding="utf-8")))
+    lineage = (
+        Lineage.from_dict(json.loads((out / "lineage.json").read_text(encoding="utf-8")))
+        if with_lineage
+        else None
+    )
     dataset = json.loads((out / "dataset.json").read_text(encoding="utf-8"))
 
     return PipelineResult(

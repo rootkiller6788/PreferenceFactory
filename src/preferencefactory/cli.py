@@ -84,10 +84,13 @@ def _out_of(args: argparse.Namespace) -> Path:
     return Path(getattr(args, "out", None) or (_root_of(args) / "out")).resolve()
 
 
-def _result(args: argparse.Namespace) -> Any:
-    """优先读产物；产物不全就在内存里跑一次（并提示）。"""
+def _result(args: argparse.Namespace, *, with_lineage: bool = False) -> Any:
+    """优先读产物；产物不全就在内存里跑一次（并提示）。
+
+    `lineage` 只有 `lineage` 命令需要，默认不解析那份几千条边的产物。
+    """
     out = _out_of(args)
-    res = load_result(out)
+    res = load_result(out, with_lineage=with_lineage)
     if res is not None:
         return res
     print(f"[提示] {out} 下产物不完整，本次在内存中跑一遍（先跑 `run` 可落盘）。", file=sys.stderr)
@@ -348,8 +351,11 @@ def cmd_dataset(args: argparse.Namespace) -> int:
 
 
 def cmd_lineage(args: argparse.Namespace) -> int:
-    res = _result(args)
+    res = _result(args, with_lineage=True)
     g = res.lineage
+    if g is None:  # pragma: no cover - with_lineage=True 时不会发生
+        print("产物缺少血缘图", file=sys.stderr)
+        return 2
     if args.json:
         _emit_json(g.to_dict())
         return 0
