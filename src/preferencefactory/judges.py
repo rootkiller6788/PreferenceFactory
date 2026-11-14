@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Mapping, Sequence
 
 from .candidates import norm_length
@@ -110,11 +111,22 @@ def score_candidate(
     return base + pos + ln + me + n, tuple(factors)
 
 
+@lru_cache(maxsize=None)
+def _noise_for(judge_id: str, candidate_id: str, noise: float) -> float:
+    """按 `(裁判, 候选, 噪声尺度)` 缓存的确定性噪声。
+
+    同一个候选会被同一个裁判判很多次（换序探针判两次、陷阱集与对照集复用同一
+    候选池），而这条噪声按定义就是**不变**的。不缓存的话每次都要新建一个
+    `Random` 并重新播种，实测占整趟 `run` 的两成左右。
+    """
+    return Rng(derive_seed(judge_id, candidate_id, "noise")).normal(0.0, noise)
+
+
 def _noise_of(judge: JudgeSpec, c: Candidate) -> float:
     """`(裁判, 候选)` 上的确定性噪声。噪声为 0 时直接返回 0，不消耗随机源。"""
     if judge.noise <= 0.0:
         return 0.0
-    return Rng(derive_seed(judge.id, c.id, "noise")).normal(0.0, judge.noise)
+    return _noise_for(judge.id, c.id, judge.noise)
 
 
 def choice_of(score_a: float, score_b: float, tie_margin: float) -> tuple[str, float]:
