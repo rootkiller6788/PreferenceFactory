@@ -56,6 +56,10 @@ class Lineage:
         self._nodes: dict[str, Node] = {}
         self._edges: list[Edge] = []
         self._out: dict[str, set[str]] = {}
+        # 邻接索引：parents_of / children_of 原本每次扫全表（O(E)），
+        # 建索引后是 O(度数)。用 list 而不是 set，保留边的插入顺序与重复边。
+        self._in_edges: dict[str, list[str]] = {}
+        self._out_edges: dict[str, list[str]] = {}
 
     # ---- 写
 
@@ -76,6 +80,8 @@ class Lineage:
             raise ValueError(f"加这条边会成环：{edge.src} -> {edge.dst}")
         self._edges.append(edge)
         self._out[edge.src].add(edge.dst)
+        self._out_edges.setdefault(edge.src, []).append(edge.dst)
+        self._in_edges.setdefault(edge.dst, []).append(edge.src)
 
     def _reaches(self, src: str, dst: str, _seen: set[str] | None = None) -> bool:
         seen = _seen if _seen is not None else set()
@@ -101,10 +107,10 @@ class Lineage:
         return self._nodes.get(nid)
 
     def parents_of(self, nid: str) -> tuple[str, ...]:
-        return tuple(e.src for e in self._edges if e.dst == nid)
+        return tuple(self._in_edges.get(nid, ()))
 
     def children_of(self, nid: str) -> tuple[str, ...]:
-        return tuple(e.dst for e in self._edges if e.src == nid)
+        return tuple(self._out_edges.get(nid, ()))
 
     def to_dict(self) -> dict[str, Any]:
         # 直接迭代内部存储：`nodes` / `edges` 属性每次都会各复制一份 tuple，
