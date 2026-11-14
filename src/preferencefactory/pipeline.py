@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -101,8 +102,9 @@ class PipelineResult:
 
     # ---- 便捷视图
 
-    @property
+    @cached_property
     def kept(self) -> tuple[PreferenceRecord, ...]:
+        """保留记录。CLI / 报告 / 导出会反复访问，缓存掉线性筛选。"""
         return tuple(r for r in self.records if r.kept)
 
     def record(self, rid: str) -> PreferenceRecord | None:
