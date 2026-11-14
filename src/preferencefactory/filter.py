@@ -264,15 +264,24 @@ def noise_report(records: Sequence[PreferenceRecord]) -> NoiseReport:
     只在项目内部可得 —— 真实部署没有这一列，所以这里的数字是**对过滤器的评估**，
     不是过滤器本身的输入。
     """
+    # 一次遍历同时数四个格子。`is_noise` 要读真值并做比较，原来每条记录会被
+    # 重复求值（总数一次、保留一次、丢弃一次），这里只求一次。
     n_total = len(records)
-    noise_total = sum(1 for r in records if r.is_noise)
-    kept = [r for r in records if r.kept]
-    dropped = [r for r in records if not r.kept]
+    noise_total = n_kept = noise_kept = n_removed = noise_removed = 0
+    for r in records:
+        noise = r.is_noise
+        noise_total += noise
+        if r.kept:
+            n_kept += 1
+            noise_kept += noise
+        else:
+            n_removed += 1
+            noise_removed += noise
     return NoiseReport(
         n_total=n_total,
         noise_total=noise_total,
-        n_kept=len(kept),
-        noise_kept=sum(1 for r in kept if r.is_noise),
-        n_removed=len(dropped),
-        noise_removed=sum(1 for r in dropped if r.is_noise),
+        n_kept=n_kept,
+        noise_kept=noise_kept,
+        n_removed=n_removed,
+        noise_removed=noise_removed,
     )
