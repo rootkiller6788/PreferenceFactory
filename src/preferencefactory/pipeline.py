@@ -535,11 +535,21 @@ def write_outputs(result: PipelineResult, out_dir: Path | str) -> list[Path]:
 
 
 def _agreement_summary(records: Sequence[PreferenceRecord]) -> dict[str, Any]:
+    n = len(records)
+    if n == 0:
+        return {"agreement_mean": 0.0, "kappa_mean": 0.0, "confidence_mean": 0.0, "tie_rate": 0.0}
+    # 一次遍历算四个均值：原来要建四份列表、扫四遍。
+    ag = kp = cf = ties = 0.0
+    for r in records:
+        ag += r.agreement
+        kp += r.kappa
+        cf += r.confidence
+        ties += 1.0 if r.verdict == "tie" else 0.0
     return {
-        "agreement_mean": _mean([r.agreement for r in records]),
-        "kappa_mean": _mean([r.kappa for r in records]),
-        "confidence_mean": _mean([r.confidence for r in records]),
-        "tie_rate": _mean([1.0 if r.verdict == "tie" else 0.0 for r in records]),
+        "agreement_mean": round(ag / n, 6),
+        "kappa_mean": round(kp / n, 6),
+        "confidence_mean": round(cf / n, 6),
+        "tie_rate": round(ties / n, 6),
     }
 
 
