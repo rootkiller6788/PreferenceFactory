@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from typing import Any, Iterable, Mapping, Sequence
 
 from .prompts import criteria_score, render
@@ -150,11 +151,19 @@ def length_stats(candidates: Iterable[Candidate]) -> tuple[float, float]:
     return mu, math.sqrt(var) or 1.0
 
 
+@lru_cache(maxsize=8192)
+def _length_z(length: int, mu: float, sigma: float, clip: float) -> float:
+    z = (length - mu) / sigma if sigma else 0.0
+    return max(-clip, min(clip, z))
+
+
 def norm_length(c: Candidate, mu: float, sigma: float, *, clip: float = 2.0) -> float:
     """长度 z 分数，截断到 ±clip。
 
     截断是必要的：不截断时一个极端长的候选能拿到 z=5，长度偏差项会盖过一切，
     于是「长度偏差 0.28」这个注入量对应的实际效应就不可解释了。
+
+    z 只取决于 `(长度, 全池 μ/σ, clip)`，与是哪位裁判无关；而每个 llm 裁判都会
+    对同一个候选重算一遍，缓存掉这份重复计算。
     """
-    z = (c.length - mu) / sigma if sigma else 0.0
-    return max(-clip, min(clip, z))
+    return _length_z(c.length, mu, sigma, clip)
