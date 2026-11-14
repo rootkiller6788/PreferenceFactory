@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from functools import cached_property
 from typing import Any, Mapping
 
 __all__ = [
@@ -504,19 +505,27 @@ class BiasProfile:
     detected: tuple[tuple[str, float], ...]
     n_probes: tuple[tuple[str, int], ...]
 
+    @cached_property
+    def _detected_map(self) -> dict[str, float]:
+        return dict(self.detected)
+
+    @cached_property
+    def _injected_map(self) -> dict[str, float]:
+        return dict(self.injected)
+
     @property
     def max_detected(self) -> float:
-        return max((v for _, v in self.detected), default=0.0)
+        return max(self._detected_map.values(), default=0.0)
 
     @property
     def max_injected(self) -> float:
-        return max((v for _, v in self.injected), default=0.0)
+        return max(self._injected_map.values(), default=0.0)
 
     def detected_on(self, axis: str) -> float:
-        return dict(self.detected).get(axis, 0.0)
+        return self._detected_map.get(axis, 0.0)
 
     def injected_on(self, axis: str) -> float:
-        return dict(self.injected).get(axis, 0.0)
+        return self._injected_map.get(axis, 0.0)
 
     def to_dict(self) -> dict[str, Any]:
         return {
