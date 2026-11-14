@@ -549,17 +549,20 @@ def _pairwise_matrix(result: PipelineResult) -> dict[str, Any]:
     """
     out: dict[str, Any] = {}
     js = [j.id for j in result.judges]
+    # 每条记录先把「裁判 → 结论」摊平成 dict：否则每对裁判都要在 verdicts 上
+    # 各扫一遍（J 个裁判就是 J²/2 × J 次线性查找）。
+    choices = [{v.judge_id: v.choice for v in r.verdicts} for r in result.records]
     for i in range(len(js)):
         for k in range(i + 1, len(js)):
             agree = 0
             n = 0
-            for r in result.records:
-                va = next((v for v in r.verdicts if v.judge_id == js[i]), None)
-                vb = next((v for v in r.verdicts if v.judge_id == js[k]), None)
+            for by_judge in choices:
+                va = by_judge.get(js[i])
+                vb = by_judge.get(js[k])
                 if va is None or vb is None:
                     continue
                 n += 1
-                agree += 1 if va.choice == vb.choice else 0
+                agree += 1 if va == vb else 0
             out[f"{js[i]}~{js[k]}"] = {
                 "n": n,
                 "agree": agree,
