@@ -107,9 +107,11 @@ class Lineage:
         return tuple(e.dst for e in self._edges if e.src == nid)
 
     def to_dict(self) -> dict[str, Any]:
+        # 直接迭代内部存储：`nodes` / `edges` 属性每次都会各复制一份 tuple，
+        # 而这里只读一次，没必要为 678 个节点 / 2,693 条边付两份中间副本。
         return {
-            "nodes": [n.to_dict() for n in self.nodes],
-            "edges": [e.to_dict() for e in self.edges],
+            "nodes": [n.to_dict() for n in self._nodes.values()],
+            "edges": [e.to_dict() for e in self._edges],
         }
 
     @classmethod
@@ -125,11 +127,11 @@ class Lineage:
 
     def to_dot(self) -> str:
         lines = ["digraph lineage {", '  rankdir="LR";', '  node [shape=box, style="rounded,filled", fontname="Helvetica"];']
-        for n in self.nodes:
+        for n in self._nodes.values():
             color = DOT_COLORS.get(n.kind, "#ffffff")
             label = (n.label or n.id).replace('"', "'")
             lines.append(f'  "{n.id}" [label="{label}", fillcolor="{color}"];')
-        for e in self.edges:
+        for e in self._edges:
             label = e.label or e.kind
             lines.append(f'  "{e.src}" -> "{e.dst}" [label="{label}"];')
         lines.append("}")
