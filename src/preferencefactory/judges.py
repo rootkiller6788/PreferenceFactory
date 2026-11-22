@@ -167,7 +167,7 @@ def judge_pair(
         margin=margin,
         factors=fa,
         rationale=_rationale(judge, choice, fa, fb, a, b),
-        provenance=judge.to_dict(),
+        provenance=judge.provenance,
     )
 
 

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from functools import cached_property
+from types import MappingProxyType
 from typing import Any, Mapping
 
 __all__ = [
@@ -256,6 +257,15 @@ class JudgeSpec:
             _require(self.family is None, f"裁判 {self.id} 是 {self.kind}，不该属于某个候选族")
         else:
             _require(self.family is not None, f"裁判 {self.id} 是 llm，必须指定 family（自我偏好要以它为定义）")
+
+    @cached_property
+    def provenance(self) -> Mapping[str, Any]:
+        """写进每条 `Verdict.provenance` 的只读快照。
+
+        裁判池固定时这份内容不变，而每条判定都要带上它；缓存成只读视图既省掉
+        上千次 dict 重建，也避免下游误改所有判定共享的同一个对象。
+        """
+        return MappingProxyType(self.to_dict())
 
     @property
     def injected(self) -> dict[str, float]:
