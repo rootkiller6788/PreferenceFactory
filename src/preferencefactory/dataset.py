@@ -146,12 +146,11 @@ def write_jsonl(path, rows: Iterable[Mapping[str, Any]]) -> int:
 
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    n = 0
-    with p.open("w", encoding="utf-8", newline="\n") as fh:
-        for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
-            n += 1
-    return n
+    # 先把所有行序列化好再一次写入：records.jsonl 有 288 行 / 1.2MB，逐行 write
+    # 会走 288 次文件对象的写路径。json.dumps 不会产生裸换行，拼接是安全的。
+    lines = [json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows]
+    p.write_text("".join(lines), encoding="utf-8", newline="\n")
+    return len(lines)
 
 
 def read_jsonl(path) -> list[dict[str, Any]]:
