@@ -70,18 +70,43 @@ class Lineage:
         self._out.setdefault(node.id, set())
 
     def add_edge(self, edge: Edge) -> None:
+        self._append_edge(edge, check_cycle=True)
+
+    def _append_edge(self, edge: Edge, *, check_cycle: bool) -> None:
         if edge.src not in self._nodes:
             raise ValueError(f"边的起点不存在：{edge.src}")
         if edge.dst not in self._nodes:
             raise ValueError(f"边的终点不存在：{edge.dst}")
         if edge.dst == edge.src:
             raise ValueError(f"自环：{edge.src}")
-        if self._reaches(edge.dst, edge.src):
+        if check_cycle and self._reaches(edge.dst, edge.src):
             raise ValueError(f"加这条边会成环：{edge.src} -> {edge.dst}")
         self._edges.append(edge)
         self._out[edge.src].add(edge.dst)
         self._out_edges.setdefault(edge.src, []).append(edge.dst)
         self._in_edges.setdefault(edge.dst, []).append(edge.src)
+
+    def _validate_acyclic(self) -> None:
+        """Kahn 拓扑排序，一次判定整张图是否有环。
+
+        `from_dict` 读入的边是**已经构建好的**，逐条做 DFS 环检测是 O(E·(V+E))；
+        全部读完再做一次拓扑排序是 O(V+E)，且错误语义不变（仍然抛 ValueError）。
+        """
+        indeg = {nid: 0 for nid in self._nodes}
+        for e in self._edges:
+            indeg[e.dst] += 1
+        queue = [nid for nid, d in indeg.items() if d == 0]
+        seen = 0
+        while queue:
+            cur = queue.pop()
+            seen += 1
+            # 用带重复边的索引：indeg 是按 _edges 的每条边记的，必须逐条减。
+            for nxt in self._out_edges.get(cur, ()):
+                indeg[nxt] -= 1
+                if indeg[nxt] == 0:
+                    queue.append(nxt)
+        if seen != len(self._nodes):
+            raise ValueError("血缘图成环：from_dict 校验失败")
 
     def _reaches(self, src: str, dst: str, _seen: set[str] | None = None) -> bool:
         seen = _seen if _seen is not None else set()
@@ -126,7 +151,12 @@ class Lineage:
         for n in raw.get("nodes", ()):
             g.add_node(Node(str(n["id"]), str(n["kind"]), str(n.get("label", "")), dict(n.get("meta") or {})))
         for e in raw.get("edges", ()):
-            g.add_edge(Edge(str(e["src"]), str(e["dst"]), str(e["kind"]), str(e.get("label", ""))))
+            # 先全部插入，最后统一做一次拓扑校验；不要每条边都 DFS 一遍。
+            g._append_edge(
+                Edge(str(e["src"]), str(e["dst"]), str(e["kind"]), str(e.get("label", ""))),
+                check_cycle=False,
+            )
+        g._validate_acyclic()
         return g
 
     # ---- DOT
