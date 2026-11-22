@@ -104,7 +104,7 @@ class Prompt:
         kinds = [c.kind for c in self.checks]
         _require(len(set(kinds)) == len(kinds), f"prompt {self.id} 的判据有重复：{kinds}")
 
-    @property
+    @cached_property
     def difficulty(self) -> float:
         return sum(c.difficulty for c in self.checks) / len(self.checks)
 
