@@ -94,15 +94,36 @@ def build_manifest(
     extra: Mapping[str, Any] | None = None,
 ) -> DatasetManifest:
     digest = content_digest(kept)
+    # 一次遍历把三个分类计数与五个均值全部算完：原本要扫 8 遍 kept。
+    by_kind: dict[str, int] = {}
+    by_verdict: dict[str, int] = {}
+    by_pair: dict[str, int] = {}
+    sum_ag = sum_cf = sum_kp = 0.0
+    chosen_sum = rejected_sum = 0.0
+    n_chosen = n_rejected = 0
+    for r in kept:
+        _bump(by_kind, str(r.prompt_kind))
+        _bump(by_verdict, str(r.verdict))
+        _bump(by_pair, "|".join(c.family for c in r.candidates))
+        sum_ag += r.agreement
+        sum_cf += r.confidence
+        sum_kp += r.kappa
+        if r.chosen is not None:
+            chosen_sum += len(r.chosen)
+            n_chosen += 1
+        if r.rejected is not None:
+            rejected_sum += len(r.rejected)
+            n_rejected += 1
+    n = len(kept)
     stats: dict[str, Any] = {
-        "by_prompt_kind": _count_by(kept, lambda r: r.prompt_kind),
-        "by_verdict": _count_by(kept, lambda r: r.verdict),
-        "by_family_pair": _count_by(kept, lambda r: "|".join(c.family for c in r.candidates)),
-        "agreement_mean": _mean([r.agreement for r in kept]),
-        "confidence_mean": _mean([r.confidence for r in kept]),
-        "kappa_mean": _mean([r.kappa for r in kept]),
-        "chosen_len_mean": _mean([float(len(r.chosen)) for r in kept if r.chosen is not None]),
-        "rejected_len_mean": _mean([float(len(r.rejected)) for r in kept if r.rejected is not None]),
+        "by_prompt_kind": dict(sorted(by_kind.items())),
+        "by_verdict": dict(sorted(by_verdict.items())),
+        "by_family_pair": dict(sorted(by_pair.items())),
+        "agreement_mean": round(sum_ag / n, 6) if n else 0.0,
+        "confidence_mean": round(sum_cf / n, 6) if n else 0.0,
+        "kappa_mean": round(sum_kp / n, 6) if n else 0.0,
+        "chosen_len_mean": round(chosen_sum / n_chosen, 6) if n_chosen else 0.0,
+        "rejected_len_mean": round(rejected_sum / n_rejected, 6) if n_rejected else 0.0,
     }
     if extra:
         stats.update(extra)
@@ -115,16 +136,8 @@ def build_manifest(
     )
 
 
-def _count_by(records: Iterable[PreferenceRecord], key) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for r in records:
-        k = str(key(r))
-        out[k] = out.get(k, 0) + 1
-    return {k: v for k, v in sorted(out.items())}
-
-
-def _mean(xs: Sequence[float]) -> float:
-    return round(sum(xs) / len(xs), 6) if xs else 0.0
+def _bump(counter: dict[str, int], key: str) -> None:
+    counter[key] = counter.get(key, 0) + 1
 
 
 def write_jsonl(path, rows: Iterable[Mapping[str, Any]]) -> int:
