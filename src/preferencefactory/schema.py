@@ -397,7 +397,7 @@ class PreferenceRecord:
     def b(self) -> Candidate:
         return self.candidates[1]
 
-    @property
+    @cached_property
     def truth_winner(self) -> str:
         """隐藏真值下的胜者。**优先读 `truth["winner"]`** —— 那里带平局容差。
 
@@ -419,7 +419,7 @@ class PreferenceRecord:
     def truth_margin(self) -> float:
         return abs(self.a.quality - self.b.quality)
 
-    @property
+    @cached_property
     def is_noise(self) -> bool:
         """这条记录**本来就不该有偏好结论**。
 
