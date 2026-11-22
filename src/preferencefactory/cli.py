@@ -143,14 +143,16 @@ def cmd_report(args: argparse.Namespace) -> int:
 def cmd_summary(args: argparse.Namespace) -> int:
     res = _result(args)
     n = res.noise
+    # 只读一次配置：_cfg_of 会重新读并解析 configs/default.json，原来这里要读三遍。
+    cfg = _cfg_of(args)
     payload = {
         "version": res.version,
         "created_at": res.created_at,
         "counts": dict(res.counts),
         "noise": n.to_dict(),
         "funnel": res.funnel.to_dict(),
-        "objectives": list(objectives_of(_cfg_of(args))),
-        "protocol_digest": protocol_digest(_cfg_of(args))[:12] if res.cfg else None,
+        "objectives": list(objectives_of(cfg)),
+        "protocol_digest": protocol_digest(cfg)[:12] if res.cfg else None,
     }
     if args.json:
         _emit_json(payload)
@@ -161,7 +163,7 @@ def cmd_summary(args: argparse.Namespace) -> int:
           f" ｜ 保留 {c.get('kept', 0)} ｜ 裁判 {c.get('judges', 0)}")
     print(f"  噪声率 {n.noise_rate_before:.3f} → {n.noise_rate_after:.3f}"
           f" ｜ 精度 {n.precision:.3f} ｜ 提升 {n.lift:.2f}× ｜ 召回 {n.recall:.3f}")
-    print(f"  优化目标：{list(objectives_of(_cfg_of(args))) or '无（本项目只过滤，不挑选）'}")
+    print(f"  优化目标：{list(objectives_of(cfg)) or '无（本项目只过滤，不挑选）'}")
     return 0
 
 
