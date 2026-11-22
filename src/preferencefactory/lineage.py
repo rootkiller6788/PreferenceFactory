@@ -108,14 +108,22 @@ class Lineage:
         if seen != len(self._nodes):
             raise ValueError("血缘图成环：from_dict 校验失败")
 
-    def _reaches(self, src: str, dst: str, _seen: set[str] | None = None) -> bool:
-        seen = _seen if _seen is not None else set()
-        if src in seen:
-            return False
-        seen.add(src)
-        for nxt in self._out.get(src, ()):  # type: ignore[arg-type]
-            if nxt == dst or self._reaches(nxt, dst, seen):
-                return True
+    def _reaches(self, src: str, dst: str) -> bool:
+        """从 src 出发能否到达 dst。**显式栈而不是递归** —— 血缘链一旦超过
+        Python 的递归上限（默认 1000），递归版本会抛 RecursionError 而不是给出
+        「会成环」这个本该给出的结论。"""
+        seen: set[str] = set()
+        stack = [src]
+        while stack:
+            cur = stack.pop()
+            if cur in seen:
+                continue
+            seen.add(cur)
+            for nxt in self._out.get(cur, ()):  # type: ignore[arg-type]
+                if nxt == dst:
+                    return True
+                if nxt not in seen:
+                    stack.append(nxt)
         return False
 
     # ---- 读
