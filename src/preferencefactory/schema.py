@@ -429,7 +429,7 @@ class PreferenceRecord:
         t = self.truth_winner
         return t == "tie" or self.verdict != t
 
-    @property
+    @cached_property
     def chosen(self) -> str | None:
         """导出用：被选中的候选文本。`tie` 返回 None —— **不硬选**，
         硬选就是把裁判噪声固化成训练数据。"""
@@ -437,7 +437,7 @@ class PreferenceRecord:
             return None
         return (self.a if self.verdict == "a" else self.b).text
 
-    @property
+    @cached_property
     def rejected(self) -> str | None:
         if self.verdict == "tie":
             return None
