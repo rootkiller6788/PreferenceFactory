@@ -108,17 +108,19 @@ class PipelineResult:
         """保留记录。CLI / 报告 / 导出会反复访问，缓存掉线性筛选。"""
         return tuple(r for r in self.records if r.kept)
 
+    @cached_property
+    def _records_by_id(self) -> dict[str, PreferenceRecord]:
+        return {r.id: r for r in self.records}
+
+    @cached_property
+    def _profiles_by_id(self) -> dict[str, BiasProfile]:
+        return {p.judge_id: p for p in self.profiles}
+
     def record(self, rid: str) -> PreferenceRecord | None:
-        for r in self.records:
-            if r.id == rid:
-                return r
-        return None
+        return self._records_by_id.get(rid)
 
     def profile_of(self, judge_id: str) -> BiasProfile | None:
-        for p in self.profiles:
-            if p.judge_id == judge_id:
-                return p
-        return None
+        return self._profiles_by_id.get(judge_id)
 
 
 # --------------------------------------------------------------------------
