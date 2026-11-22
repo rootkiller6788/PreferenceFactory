@@ -176,9 +176,12 @@ class Candidate:
         _require(0.0 <= self.polish <= 1.0, f"polish 应在 [0, 1]，得到 {self.polish}")
         _require(self.length >= 0 and self.pad_chars >= 0, "长度不能为负")
 
-    @property
+    @cached_property
     def quality(self) -> float:
-        """隐藏真值 ∈ [0, 1]：`criteria` 为主，加 20% 不可观测的 `polish`。"""
+        """隐藏真值 ∈ [0, 1]：`criteria` 为主，加 20% 不可观测的 `polish`。
+
+        这是判定、探针、真值比较里最高频的派生量，而候选不可变；缓存一次即可。
+        """
         return TRUTH_W_CRITERIA * self.criteria + TRUTH_W_POLISH * self.polish
 
     @property
