@@ -197,7 +197,7 @@ Preference Dataset（v1-<digest12>，导出时剥掉真值）
 ## A.2 快速开始
 
 ```bash
-python main.py run            # 整条流水线 + 落盘（13 个文件，约 0.4 s）
+python main.py run            # 整条流水线 + 落盘（13 个产物，约 0.33 s）
 python main.py acceptance     # 验收清单（17 项）
 python main.py adversarial    # 对抗用例（12 项，不依赖产物）
 python main.py report         # out/report.md
@@ -233,7 +233,7 @@ python main.py visualize      # out/report.html（自包含）
 **`--json` 只输出 JSON**：说明文字被 `_quiet_prose` 吞掉，`_emit_json` 直接写真正的
 stdout。所以 `python main.py bias --json | jq` 是能用的。全部 15 个只读命令都支持。
 
-## A.4 产物（`out/`，13 个文件）
+## A.4 产物（`out/`，13 个流水线产物 + 2 个报告 = 15 个文件）
 
 | 文件 | 内容 |
 | --- | --- |
@@ -282,16 +282,16 @@ stdout。所以 `python main.py bias --json | jq` 是能用的。全部 15 个�
 
 | 项 | 值 |
 | --- | --- |
-| Python | 3.13.12（要求 `>= 3.12`） |
+| Python | 3.14.3（要求 `>= 3.12`；CI 覆盖 3.12 / 3.13 / 3.14） |
 | 第三方依赖 | **零** |
 | 平台 | Windows 11 / 单机 |
 | 规模 | 96 个 prompt × 3 个候选 = 288 个候选 → 288 条无序对 → 288 条记录 |
 | 裁判池 | 5 个（rule / human / llm×3），每记录 5 次判定 = 1,440 次 |
 | 探针 | 25 条结果（3 轴 × 5 裁判 + 对照集） |
-| 整趟 `run` | **0.40 s** |
-| 只读命令 | 0.21 – 0.33 s |
-| 源码 | 5,347 行（`src/` 17 个模块 + `main.py`） |
-| 产物 | 2.2 MB / 13 个文件 |
+| 整趟 `run` | **0.33 s**（含解释器启动，2026-11 优化后） |
+| 只读命令 | 0.25 – 0.31 s |
+| 源码 | 5,598 行（`src/` 18 个模块 + `main.py`） |
+| 产物 | 2.0 MB / 15 个文件（13 个流水线产物 + 2 个报告） |
 | 版本 | `v1-f503b728a71e`（两次 `run` 逐位相同） |
 
 ## B.2 验收标准逐条核对
