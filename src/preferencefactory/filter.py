@@ -20,14 +20,46 @@ from .schema import BIAS_AXES, BiasProfile, Evidence, PreferenceRecord, Verdict
 
 __all__ = [
     "FUNNEL_RULES",
+    "FilterConfig",
     "Funnel",
     "NoiseReport",
+    "filter_config",
     "tainted_axes",
     "evaluate_record",
     "filter_records",
     "build_funnel",
     "noise_report",
 ]
+
+
+@dataclass(frozen=True)
+class FilterConfig:
+    """过滤门槛的**一次解析**结果。
+
+    `evaluate_record` 原本每条记录都从 cfg 里重新取一遍、再 `float()` 一遍；
+    门槛在一次运行里不变，所以在 `filter_records` 入口解析一次就够了。
+    """
+
+    min_agreement: float = 0.0
+    min_confidence: float = 0.0
+    bias_threshold: float = 1.0
+    require_rule_agreement: bool = True
+    require_untainted_support: bool = True
+
+    @classmethod
+    def from_cfg(cls, cfg: Mapping[str, Any]) -> "FilterConfig":
+        f = dict(cfg.get("filter") or {})
+        return cls(
+            min_agreement=float(f.get("min_agreement", 0.0)),
+            min_confidence=float(f.get("min_confidence", 0.0)),
+            bias_threshold=float(f.get("bias_threshold", 1.0)),
+            require_rule_agreement=bool(f.get("require_rule_agreement", True)),
+            require_untainted_support=bool(f.get("require_untainted_support", True)),
+        )
+
+
+def filter_config(cfg: Mapping[str, Any]) -> FilterConfig:
+    return FilterConfig.from_cfg(cfg)
 
 FUNNEL_RULES: tuple[str, ...] = (
     "agreement",
@@ -148,12 +180,17 @@ def evaluate_record(
     rec: PreferenceRecord,
     cfg: Mapping[str, Any],
     profiles: Mapping[str, BiasProfile],
+    *,
+    fc: FilterConfig | None = None,
 ) -> tuple[bool, tuple[Evidence, ...], str | None]:
-    """逐条评估。返回 `(保留?, 证据, 首因)`。"""
-    f = dict(cfg.get("filter") or {})
-    min_ag = float(f.get("min_agreement", 0.0))
-    min_cf = float(f.get("min_confidence", 0.0))
-    thr = float(f.get("bias_threshold", 1.0))
+    """逐条评估。返回 `(保留?, 证据, 首因)`。
+
+    `fc` 由 `filter_records` 预先解析好传入；单独调用时可省略，内部会从 cfg 解析。
+    """
+    f = fc if fc is not None else filter_config(cfg)
+    min_ag = f.min_agreement
+    min_cf = f.min_confidence
+    thr = f.bias_threshold
 
     ev: list[Evidence] = []
     first: str | None = None
@@ -183,7 +220,7 @@ def evaluate_record(
     )
 
     # 3) rule 裁判（无偏锚点）不得反对
-    if f.get("require_rule_agreement", True):
+    if f.require_rule_agreement:
         rv = next((v for v in rec.verdicts if v.kind == "rule"), None)
         if rv is None:
             note("rule_agreement", False, "这条记录没有 rule 裁判的判定，无从对照")
@@ -200,7 +237,7 @@ def evaluate_record(
             )
 
     # 4) 至少有一个「在这条记录上无染」的裁判支持结论
-    if f.get("require_untainted_support", True):
+    if f.require_untainted_support:
         if rec.verdict == "tie":
             note("untainted_support", False, "结论是平局，不构成偏好（没有任何裁判支持一个具体选择）")
         else:
@@ -229,9 +266,10 @@ def filter_records(
     profiles: Mapping[str, BiasProfile],
 ) -> list[PreferenceRecord]:
     recs = list(records)
+    fc = filter_config(cfg)
     out: list[PreferenceRecord] = []
     for r in recs:
-        kept, ev, _ = evaluate_record(r, cfg, profiles)
+        kept, ev, _ = evaluate_record(r, cfg, profiles, fc=fc)
         out.append(r.with_kept(kept, ev))
     return out
 
